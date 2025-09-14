@@ -2,23 +2,36 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>🍅番茄鐘 Pomodoro Timer</title>
+  <title>🍅 番茄鐘 Pomodoro Timer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 響應式設計：加入 viewport -->
   <style>
+    /* ========= 基礎樣式 ========= */
     body {
       font-family: Arial, sans-serif;
       text-align: center;
       background: #fdf6e3; /* 預設淡黃色 */
       color: #333;
-      padding: 50px;
-      transition: background 0.5s ease;
+      padding: 40px 20px;
+      transition: background 0.5s ease; /* 背景顏色漸變 */
     }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+
     #timer {
-      font-size: 48px;
+      font-size: 3rem;
       margin: 20px 0;
+      font-weight: bold;
     }
+
+    /* ========= 進度條 ========= */
     #progressBarContainer {
-      width: 80%;
-      height: 10px;
+      width: 90%;
+      max-width: 400px; /* 限制最大寬度 */
+      height: 12px;
       background: #eee;
       border-radius: 10px;
       margin: 20px auto;
@@ -29,12 +42,14 @@
       width: 100%;
       background: #ff6b6b;
       transition: width 1s linear;
-      float: right; /* 從右側開始遞減 */
+      float: right; /* 讓進度條從右往左縮 */
     }
+
+    /* ========= 控制按鈕 ========= */
     button, input {
-      font-size: 18px;
+      font-size: 16px;
       padding: 10px 20px;
-      margin: 5px;
+      margin: 8px;
       border: none;
       border-radius: 8px;
     }
@@ -50,15 +65,15 @@
       width: 80px;
       text-align: center;
       border: 1px solid #ccc;
+      border-radius: 6px;
     }
-    /* 自製提示視窗 */
+
+    /* ========= 自製提示視窗 ========= */
     #customAlert {
       display: none;
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       background: rgba(0,0,0,0.5);
       align-items: center;
       justify-content: center;
@@ -68,29 +83,54 @@
       padding: 20px;
       border-radius: 10px;
       text-align: center;
+      width: 80%;
+      max-width: 300px;
     }
+
+    /* ========= 休息模式下的綠色按鈕 (新增/調整) ========= */
     .green-btn {
-      background: #4caf50;
+      background: #4caf50 !important;
     }
     .green-btn:hover {
-      background: #45a049;
+      background: #45a049 !important;
+    }
+
+    /* ========= 響應式設計 (新增/調整) ========= */
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 1.5rem;
+      }
+      #timer {
+        font-size: 2.2rem;
+      }
+      button, input {
+        font-size: 14px;
+        padding: 8px 16px;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>🍅番茄鐘 Pomodoro Timer</h1>
+  <h1>🍅 番茄鐘 Pomodoro Timer</h1>
 
+  <!-- 設定工作與休息時間 -->
   <div>
-    <span id="workLabel">💪 工作時間 (分鐘):</span> <input type="number" id="workInput" value="25" min="1"> <br>
-    <span id="breakLabel">🍵 休息時間 (分鐘):</span> <input type="number" id="breakInput" value="5" min="1"> <br>
+    <span id="workLabel">💪 工作時間 (分鐘):</span> 
+    <input type="number" id="workInput" value="25" min="1"> 
+    <br>
+    <span id="breakLabel">🍵 休息時間 (分鐘):</span> 
+    <input type="number" id="breakInput" value="5" min="1"> 
   </div>
 
+  <!-- 倒數計時顯示 -->
   <div id="timer">25:00</div>
 
+  <!-- 進度條 -->
   <div id="progressBarContainer">
     <div id="progressBar"></div>
   </div>
 
+  <!-- 控制按鈕 -->
   <button id="startBtn" onclick="startTimer()">開始</button>
   <button id="pauseBtn" onclick="pauseTimer()">暫停</button>
   <button id="resetBtn" onclick="resetTimer()">重置/更新</button>
@@ -104,13 +144,15 @@
   </div>
 
   <script>
+    /* ========= 全域變數 ========= */
     let workTime = 25 * 60;
     let breakTime = 5 * 60;
     let timeLeft = workTime;
     let timerId = null;
-    let isWorkSession = true;
-    let isRunning = false; // 紀錄是否正在執行
+    let isWorkSession = true;  // true = 工作模式, false = 休息模式
+    let isRunning = false;     // 記錄是否正在執行
 
+    /* ========= 顯示計時器 ========= */
     function updateDisplay() {
       let minutes = Math.floor(timeLeft / 60);
       let seconds = timeLeft % 60;
@@ -119,39 +161,45 @@
       updateProgressBar();
     }
 
+    /* ========= 更新背景顏色 ========= */
     function updateBackground() {
       if (!isRunning) {
         document.body.style.background = "#fdf6e3"; // 預設淡黃色
       } else if (isWorkSession) {
-        document.body.style.background = "#ffe4c4"; // 暖色米橙
+        document.body.style.background = "#ffe4c4"; // 工作模式：米橙色
       } else {
-        document.body.style.background = "#dfffe0"; // 護眼淡綠
+        document.body.style.background = "#dfffe0"; // 休息模式：護眼綠
       }
     }
 
+    /* ========= 更新進度條 & 按鈕顏色 (新增/調整) ========= */
     function updateProgressBar() {
       let total = isWorkSession ? workTime : breakTime;
       let percent = (timeLeft / total) * 100;
       const bar = document.getElementById("progressBar");
       bar.style.width = percent + "%";
+
       if (isWorkSession) {
-        bar.style.background = "#ff6b6b"; // 工作紅色系
+        bar.style.background = "#ff6b6b"; // 工作紅色
         document.getElementById("startBtn").classList.remove("green-btn");
         document.getElementById("pauseBtn").classList.remove("green-btn");
         document.getElementById("resetBtn").classList.remove("green-btn");
       } else {
-        bar.style.background = "#4caf50"; // 休息綠色系
+        bar.style.background = "#4caf50"; // 休息綠色
         document.getElementById("startBtn").classList.add("green-btn");
         document.getElementById("pauseBtn").classList.add("green-btn");
         document.getElementById("resetBtn").classList.add("green-btn");
       }
     }
 
+    /* ========= 開始計時 ========= */
     function startTimer() {
       if (timerId) return; // 防止重複啟動
+
       // 讀取輸入的時間
       workTime = parseInt(document.getElementById("workInput").value) * 60;
       breakTime = parseInt(document.getElementById("breakInput").value) * 60;
+
       if (timeLeft === 0) {
         timeLeft = isWorkSession ? workTime : breakTime;
       }
@@ -168,15 +216,24 @@
           clearInterval(timerId);
           timerId = null;
           isRunning = false;
+
+          // 當時間到時發送通知 (新增/調整)
+          if (Notification.permission === "granted") {
+            new Notification(isWorkSession ? "專注完成 🎉" : "休息結束 ⏰", {
+              body: isWorkSession ? "現在該休息一下 🍵" : "讓我們繼續努力 💪",
+            });
+          }
+
           if (isWorkSession) {
-            showAlert("專注的時間告一段落！現在休息一下吧🍵！");
+            showAlert("專注時間結束！休息一下 🍵");
           } else {
-            showAlert("休息時間結束了！讓我們繼續努力💪！");
+            showAlert("休息時間結束！繼續加油 💪");
           }
         }
       }, 1000);
     }
 
+    /* ========= 暫停計時 ========= */
     function pauseTimer() {
       clearInterval(timerId);
       timerId = null;
@@ -184,6 +241,7 @@
       updateBackground();
     }
 
+    /* ========= 重置計時 ========= */
     function resetTimer() {
       clearInterval(timerId);
       timerId = null;
@@ -195,12 +253,14 @@
       updateBackground();
     }
 
+    /* ========= 顯示自製提示視窗 ========= */
     function showAlert(message) {
       document.getElementById("alertMessage").textContent = message;
       document.getElementById("customAlert").style.display = "flex";
       pauseTimer();
     }
 
+    /* ========= 關閉提示視窗 & 切換工作/休息模式 ========= */
     function closeAlert() {
       document.getElementById("customAlert").style.display = "none";
       if (isWorkSession) {
@@ -216,9 +276,12 @@
       startTimer();
     }
 
-    // 初始化顯示
+    /* ========= 初始化 (新增/調整：桌面通知權限請求) ========= */
     updateDisplay();
     updateBackground();
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
   </script>
 </body>
 </html>
