@@ -1,14 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <title>番茄鐘 Pomodoro Timer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- 響應式設計：加入 viewport -->
-  <!-- [調整] 網站 favicon -->
-  <link rel="icon" type="image/png" href="https://img.icons8.com/color/48/tomato.png">
+  <meta charset="UTF-8">
+  <title>番茄鐘 Pomodoro Timer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="https://img.icons8.com/color/48/tomato.png">
 
-  <style>
+  <style>
     /* 全域樣式 */
     body {
       font-family: Arial, sans-serif;
@@ -122,62 +120,54 @@
         width: 100%; /* 手機進度條滿版 */
       }
     }
-  </style>
+  </style>
 </head>
 <body>
-  <!-- [調整] Logo 標題 -->
-  <h1>🍅 MyPomodoro</h1>
+  <h1>🍅 MyPomodoro</h1>
+  <div>
+    <span id="workLabel">💪 工作時間 (分鐘):</span>
+    <input type="number" id="workInput" value="25" min="1"> <br>
+    <span id="breakLabel">🍵 休息時間 (分鐘):</span>
+    <input type="number" id="breakInput" value="5" min="1"> <br>
+  </div>
 
-  <div>
-    <span id="workLabel">💪 工作時間 (分鐘):</span> 
-    <input type="number" id="workInput" value="25" min="1"> <br>
-    <span id="breakLabel">🍵 休息時間 (分鐘):</span> 
-    <input type="number" id="breakInput" value="5" min="1"> <br>
-  </div>
+  <div id="timer">25:00</div>
+  <div id="progressBarContainer">
+    <div id="progressBar"></div>
+  </div>
+  <button id="startBtn" onclick="startTimer()">開始</button>
+  <button id="pauseBtn" onclick="pauseTimer()">暫停</button>
+  <button id="resetBtn" onclick="resetTimer()">重置/更新</button>
 
-  <!-- 倒數計時 -->
-  <div id="timer">25:00</div>
+  <div id="customAlert">
+    <div id="customAlertContent">
+      <p id="alertMessage">時間到囉！</p>
+      <button onclick="closeAlert()">確認</button>
+    </div>
+  </div>
 
-  <!-- 進度條 -->
-  <div id="progressBarContainer">
-    <div id="progressBar"></div>
-  </div>
+  <script>
+    // 初始化變數
+    let workTime = 25 * 60;
+    let breakTime = 5 * 60;
+    let timeLeft = workTime;
+    let timerId = null;
+    let isWorkSession = true;
+    let isRunning = false;
 
-  <!-- 操作按鈕 -->
-  <button id="startBtn" onclick="startTimer()">開始</button>
-  <button id="pauseBtn" onclick="pauseTimer()">暫停</button>
-  <button id="resetBtn" onclick="resetTimer()">重置/更新</button>
+    // [調整] 跨分頁通知 — 先請求通知權限
+    if (Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
 
-  <!-- 自製提示視窗 -->
-  <div id="customAlert">
-    <div id="customAlertContent">
-      <p id="alertMessage">時間到囉！</p>
-      <button onclick="closeAlert()">確認</button>
-    </div>
-  </div>
-
-  <script>
-    // 初始化變數
-    let workTime = 25 * 60;
-    let breakTime = 5 * 60;
-    let timeLeft = workTime;
-    let timerId = null;
-    let isWorkSession = true;
-    let isRunning = false; // 紀錄是否正在執行
-
-    // [調整] 跨分頁通知 — 先請求通知權限
-    if (Notification.permission !== "granted") {
-      Notification.requestPermission();
-    }
-
-    // 更新倒數顯示
-    function updateDisplay() {
-      let minutes = Math.floor(timeLeft / 60);
-      let seconds = timeLeft % 60;
-      document.getElementById("timer").textContent =
-        `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-      updateProgressBar();
-    }
+    // 更新倒數顯示
+    function updateDisplay() {
+      let minutes = Math.floor(timeLeft / 60);
+      let seconds = timeLeft % 60;
+      document.getElementById("timer").textContent =
+        `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      updateProgressBar();
+    }
 
     // 更新背景顏色
     function updateBackground() {
@@ -206,91 +196,93 @@
       }
     }
 
-    // 開始計時
-    function startTimer() {
-      if (timerId) return; // 防止重複啟動
-      workTime = parseInt(document.getElementById("workInput").value) * 60;
-      breakTime = parseInt(document.getElementById("breakInput").value) * 60;
-      if (timeLeft === 0) {
-        timeLeft = isWorkSession ? workTime : breakTime;
-      }
+    // 開始計時
+    function startTimer() {
+      if (timerId) return;
+      workTime = parseInt(document.getElementById("workInput").value) * 60;
+      breakTime = parseInt(document.getElementById("breakInput").value) * 60;
+      if (timeLeft === 0) {
+        timeLeft = isWorkSession ? workTime : breakTime;
+      }
 
-      isRunning = true;
-      updateBackground();
-      updateProgressBar();
+      isRunning = true;
+      updateBackground();
+      updateProgressBar();
 
-      timerId = setInterval(() => {
-        if (timeLeft > 0) {
-          timeLeft--;
-          updateDisplay();
-        } else {
-          clearInterval(timerId);
-          timerId = null;
-          isRunning = false;
-          if (isWorkSession) {
-            showAlert("努力夠久啦！現在休息一下吧🍵！");
-            sendNotification("休息時間到", "該休息囉！");
-          } else {
-            showAlert("休息時間結束了！讓我們繼續努力💪！");
-            sendNotification("休息結束", "回到工作吧！");
-          }
-        }
-      }, 1000);
-    }
+      timerId = setInterval(() => {
+        if (timeLeft > 0) {
+          timeLeft--;
+          updateDisplay();
+        } else {
+          clearInterval(timerId);
+          timerId = null;
+          isRunning = false;
 
-    // 暫停計時
-    function pauseTimer() {
-      clearInterval(timerId);
-      timerId = null;
-      isRunning = false;
-      updateBackground();
-    }
+          // **[修改]** 在這裡同時處理 UI 提醒與跨分頁通知
+          if (isWorkSession) {
+            showAlert("努力夠久啦！現在休息一下吧🍵！");
+            sendNotification("休息時間到", "該休息囉！");
+          } else {
+            showAlert("休息時間結束了！讓我們繼續努力💪！");
+            sendNotification("休息結束", "回到工作吧！");
+          }
+        }
+      }, 1000);
+    }
 
-    // 重置計時
-    function resetTimer() {
-      clearInterval(timerId);
-      timerId = null;
-      isWorkSession = true;
-      workTime = parseInt(document.getElementById("workInput").value) * 60;
-      timeLeft = workTime;
-      isRunning = false;
-      updateDisplay();
-      updateBackground();
-    }
+    // 暫停計時
+    function pauseTimer() {
+      clearInterval(timerId);
+      timerId = null;
+      isRunning = false;
+      updateBackground();
+    }
 
-    // 顯示自製提示視窗
-    function showAlert(message) {
-      document.getElementById("alertMessage").textContent = message;
-      document.getElementById("customAlert").style.display = "flex";
-      pauseTimer();
-    }
+    // 重置計時
+    function resetTimer() {
+      clearInterval(timerId);
+      timerId = null;
+      isWorkSession = true;
+      workTime = parseInt(document.getElementById("workInput").value) * 60;
+      timeLeft = workTime;
+      isRunning = false;
+      updateDisplay();
+      updateBackground();
+    }
 
-    // 關閉提示視窗
-    function closeAlert() {
-      document.getElementById("customAlert").style.display = "none";
-      if (isWorkSession) {
-        isWorkSession = false;
-        timeLeft = breakTime;
-      } else {
-        isWorkSession = true;
-        timeLeft = workTime;
-      }
-      updateDisplay();
-      isRunning = true;
-      updateBackground();
-      startTimer();
-    }
+    // 顯示自製提示視窗
+    function showAlert(message) {
+      document.getElementById("alertMessage").textContent = message;
+      document.getElementById("customAlert").style.display = "flex";
+      // **[移除]** 這裡不再呼叫 pauseTimer()
+    }
 
-    // [調整] 跨分頁提醒：使用 Notification API
-    function sendNotification(title, message) {
-      if (Notification.permission === "granted") {
-        new Notification(title, { body: message, icon: "https://img.icons8.com/color/48/tomato.png" });
-      }
-    }
+    // 關閉提示視窗
+    function closeAlert() {
+      document.getElementById("customAlert").style.display = "none";
+      if (isWorkSession) {
+        isWorkSession = false;
+        timeLeft = breakTime;
+      } else {
+        isWorkSession = true;
+        timeLeft = workTime;
+      }
+      updateDisplay();
+      isRunning = true;
+      updateBackground();
+      startTimer();
+    }
 
-    // 初始化
-    updateDisplay();
-    updateBackground();
-  </script>
+    // 跨分頁提醒：使用 Notification API
+    function sendNotification(title, message) {
+      if (Notification.permission === "granted") {
+        new Notification(title, { body: message, icon: "https://img.icons8.com/color/48/tomato.png" });
+      }
+    }
+
+    // 初始化
+    updateDisplay();
+    updateBackground();
+  </script>
 </body>
 </html>
