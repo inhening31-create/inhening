@@ -130,7 +130,7 @@
     
     <button id="startBtn">開始</button>
     <button id="pauseBtn">暫停</button>
-    <button id="resetBtn">重置/更新</button>
+    <button id="resetBtn">重置</button>
 
     <div id="customAlert">
         <div id="customAlertContent">
@@ -296,6 +296,9 @@
     pauseBtn.addEventListener('click', pauseTimer);
     resetBtn.addEventListener('click', applySettingsAndReset);
     closeAlertBtn.addEventListener('click', closeAlert);
+    // ✅ 新增監聽：輸入框變更時，自動重置時間
+    workInput.addEventListener("input", applySettingsAndReset); // 當使用者修改工作時間，馬上重置
+    breakInput.addEventListener("input", applySettingsAndReset); // 當使用者修改休息時間，馬上重置
 
     // 網頁一載入，就先請求通知權限
     window.addEventListener('load', () => {
