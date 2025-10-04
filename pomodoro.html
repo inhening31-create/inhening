@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+
+    <title>MyPomodoro - 專注工作、高效休息的線上番茄鐘</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="MyPomodoro 是一款簡潔高效的線上番茄鐘計時器，幫助你透過番茄工作法提升專注力與生產力。自訂工作和休息時間，保持高效循環！">
+
+    <meta property="og:title" content="MyPomodoro - 專注工作、高效休息的線上番茄鐘">
+    <meta property="og:description" content="用 MyPomodoro 番茄鐘，輕鬆實踐番茄工作法，提升你的工作與學習效率！">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://inhening31-create.github.io/inhening/pomodpro.html">
+    <meta property="og:image" content="https://raw.githubusercontent.com/inhening31-create/inhening/master/pomodoro-thumbnail.png">
+
+    <link rel="icon" type="image/png" href="https://img.icons8.com/color/48/tomato.png">
+
+    <style>
+        /* 全域樣式 (大致保留原樣，結構很好) */
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #fdf6e3;
+            color: #333;
+            padding: 40px 20px;
+            transition: background 0.5s ease;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+        #timer {
+            font-size: 48px;
+            margin: 20px 0;
+        }
+        #progressBarContainer {
+            width: 90%;
+            max-width: 400px;
+            height: 10px;
+            background: #eee;
+            border-radius: 10px;
+            margin: 20px auto;
+            overflow: hidden;
+        }
+        #progressBar {
+            height: 100%;
+            width: 100%;
+            background: #ccc; /* 調整 1: 初始顏色改為中性灰色 */
+            transition: width 1s linear, background 0.5s ease; /* 當寬度改變時，會用 1 秒線性動畫效果，當背景顏色改變時，會用 0.5 秒漸變效果 */
+            float: right;
+        }
+        button, input {
+            font-size: 18px;
+            padding: 10px 20px;/* 設定內距：上下 10px，左右 20px */
+            margin: 5px;/* 設定外距：四周各 5px */
+            border: none;/* 移除預設邊框 */
+            border-radius: 15px;/* 設定圓角邊框 */
+        }
+        button {
+            background: #ff6b6b;/* 設定按鈕背景顏色 */
+            color: white;/* 設定文字顏色 */
+            cursor: pointer;/* 當滑鼠移到按鈕上時，指標會變成小手 */
+        }
+        button:hover {/*當滑鼠移到 <button> 上時，套用指定的樣式*/
+            background: #ff4b4b;
+        }
+        input {
+            width: 80px;
+            text-align: center;
+            border: 1px solid #ccc;
+        }
+        /* 邏輯調整 1: 新增禁用輸入框的樣式 */
+        /* 當計時器在跑的時候，我們會禁用時間設定，避免使用者誤改。
+           這個樣式讓使用者一看就知道現在不能輸入。*/
+        input:disabled {
+            background-color: #f0f0f0;
+            cursor: not-allowed;
+            color: #888;
+        }
+        #customAlert {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        #customAlertContent {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            width: 80%;
+            max-width: 300px;
+        }
+        .green-btn {/*所有 class="green-btn" 的元素，都會套用這個樣式*/
+            background: #4caf50 !important;
+        }
+        .green-btn:hover {
+            background: #45a049 !important;
+        }
+        @media (max-width: 600px) {
+            body { padding: 20px; }
+            h1 { font-size: 1.8rem; }
+            #timer { font-size: 36px; }
+            button, input { font-size: 16px; padding: 8px 12px; }
+            #progressBarContainer { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🍅 MyPomodoro</h1>
+    <div>
+        <span id="workLabel">💪 工作時間 (分鐘):</span>
+        <!-- 輸入框: 使用者可以輸入數字，預設是 25，最小值是 1 -->
+        <input type="number" id="workInput" value="25" min="1"> <br>
+        <span id="breakLabel">🍵 休息時間 (分鐘):</span>
+        <input type="number" id="breakInput" value="5" min="1"> <br>
+    </div>
+
+    <div id="timer">25:00</div>
+    <div id="progressBarContainer">
+        <div id="progressBar"></div>
+    </div>
+    
+    <button id="startBtn">開始</button>
+    <button id="pauseBtn">暫停</button>
+    <button id="resetBtn">重置</button>
+
+    <div id="customAlert">
+        <div id="customAlertContent">
+            <p id="alertMessage">時間到囉！</p>
+            <button id="closeAlertBtn">確認</button>
+        </div>
+    </div>
+
+    <script>
+    // JS 邏輯優化：
+    // Hi！接下來是 JavaScript 的部分。
+    // 原本的程式碼在計時器跑完、跳窗、再自動開始下個計時器的流程中，邏輯比較繞。
+    // 我把程式碼的職責劃分得更清楚，讓狀態管理更穩定，也更容易維護。
+
+    // --- DOM 元素區 ---
+    // 邏輯調整 2: 將所有會用到的 HTML 元素先抓出來存成變數。
+    // 好處：1. 執行效率稍高 (不用一直重複找)。 2. 程式碼更整潔，一看就知道操作了哪些東西。
+    //到整個網頁 (document) 裡，找到 id="timer" 的元素，把它存在 timerDisplay 這個盒子裡，之後要操作它就用 timerDisplay。
+    const timerDisplay = document.getElementById("timer");
+    const progressBar = document.getElementById("progressBar");
+    const workInput = document.getElementById("workInput");
+    const breakInput = document.getElementById("breakInput");
+    const startBtn = document.getElementById("startBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const customAlert = document.getElementById("customAlert");
+    const alertMessage = document.getElementById("alertMessage");
+    const closeAlertBtn = document.getElementById("closeAlertBtn");
+
+    // --- 狀態變數區 ---
+    let workTime, breakTime, timeLeft;
+    let timerId = null;
+    let isWorkSession = true;
+    let isRunning = false;
+
+    // --- 核心函式區 ---
+
+    // 函式 1: 更新所有畫面顯示 (時間、進度條、背景、按鈕顏色、網頁標題)
+    function updateUI() {
+        let minutes = Math.floor(timeLeft / 60);
+        let seconds = timeLeft % 60;
+        timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        
+        // 動態更新網頁標題，超實用！
+        if (isRunning) {
+            document.title = `${timerDisplay.textContent} - ${isWorkSession ? "工作中" : "休息中"} | MyPomodoro`;
+        } else {
+            document.title = "MyPomodoro - 專注工作、高效休息的線上番茄鐘";
+        }
+
+        const totalTime = isWorkSession ? workTime : breakTime;
+        // 邏輯修正 1: 避免 totalTime 為 0 導致程式出錯 (division by zero)
+        const percent = totalTime > 0 ? (timeLeft / totalTime) * 100 : 100;
+        progressBar.style.width = percent + "%";
+
+        if (!isRunning) {
+            document.body.style.background = "#fdf6e3";
+            progressBar.style.background = "#ccc";
+            document.querySelectorAll("button").forEach(btn => btn.classList.remove("green-btn"));
+        } else if (isWorkSession) {
+            document.body.style.background = "#ffe4c4";
+            progressBar.style.background = "#ff6b6b";
+            document.querySelectorAll("button").forEach(btn => btn.classList.remove("green-btn"));
+        } else {
+            document.body.style.background = "#dfffe0";
+            progressBar.style.background = "#4caf50";
+            document.querySelectorAll("button").forEach(btn => btn.classList.add("green-btn"));
+        }
+    }
+
+    // 函式 2: 開始計時
+    function startTimer() {
+        // 邏輯修正 2: 如果正在跑，或是時間已經沒了，就不要重複啟動。
+        if (isRunning || timeLeft <= 0) return;
+
+        isRunning = true;
+        toggleInputs(false); // 開始計時後，禁用輸入框
+        updateUI();
+
+        timerId = setInterval(() => {
+            timeLeft--;
+            updateUI();
+            if (timeLeft < 0) { // 改為 < 0 確保 00:00 會顯示一秒
+                timerEndSequence();
+            }
+        }, 1000);
+    }
+
+    // 函式 3: 暫停計時
+    function pauseTimer() {
+        clearInterval(timerId);
+        timerId = null;
+        isRunning = false;
+        toggleInputs(true); // 暫停時，允許使用者修改時間
+        updateUI();
+    }
+
+    // 函式 4: 重置與更新設定 (取代你原本的 resetTimer)
+    function applySettingsAndReset() {
+        pauseTimer(); // 先確保計時器是暫停的
+        isWorkSession = true;
+        
+        // 讀取並更新時間設定，並加上基本驗證，防止輸入負數或零
+        workTime = Math.max(1, parseInt(workInput.value)) * 60;
+        breakTime = Math.max(1, parseInt(breakInput.value)) * 60;
+        workInput.value = workTime / 60; // 將校正後的值寫回輸入框
+        breakInput.value = breakTime / 60;
+
+        timeLeft = workTime;
+        updateUI();
+    }
+
+    // 函式 5: 計時結束後的處理流程 (把相關邏輯集中管理)
+    function timerEndSequence() {
+        pauseTimer(); // 用 pauseTimer 來停止計時器並更新狀態
+
+        const message = isWorkSession ? "努力夠久啦！現在休息一下吧🍵！" : "休息時間結束了！讓我們繼續努力💪！";
+        const notificationTitle = isWorkSession ? "休息時間到" : "休息結束";
+        
+        showAlert(message);
+        sendNotification(notificationTitle, message);
+        
+        setupNextSession(); // 準備下一回合
+    }
+
+    // 函式 6: 準備下一個回合 (新函式，只切換狀態，不自動開始)
+    function setupNextSession() {
+        isWorkSession = !isWorkSession;
+        timeLeft = isWorkSession ? workTime : breakTime;
+        updateUI();
+    }
+
+    // --- 輔助函式 ---
+    function toggleInputs(enabled) {
+        workInput.disabled = !enabled;
+        breakInput.disabled = !enabled;
+    }
+
+    function showAlert(message) {
+        alertMessage.textContent = message;
+        customAlert.style.display = "flex";
+    }
+
+    // 邏輯修正 3: 關閉提示窗時，不再自動開始。讓使用者自己點擊「開始」。
+    function closeAlert() {
+        customAlert.style.display = "none";
+    }
+
+    // 跨分頁通知 (你的版本很棒，幾乎沒動)
+    function sendNotification(title, message) {
+        if (!("Notification" in window)) {
+            console.log("這個瀏覽器不支援桌面通知");
+            return;
+        }
+        if (Notification.permission === "granted") {
+            new Notification(title, { body: message, icon: "https://img.icons8.com/color/48/tomato.png" });
+        }
+    }
+
+    // --- 初始化與事件監聽 ---
+    // 邏輯調整 3: 改用 addEventListener 綁定事件，實現 HTML/JS 分離。
+    startBtn.addEventListener('click', startTimer);
+    pauseBtn.addEventListener('click', pauseTimer);
+    resetBtn.addEventListener('click', applySettingsAndReset);
+    closeAlertBtn.addEventListener('click', closeAlert);
+    // ✅ 新增監聽：輸入框變更時，自動重置時間
+    workInput.addEventListener("input", applySettingsAndReset); // 當使用者修改工作時間，馬上重置
+    breakInput.addEventListener("input", applySettingsAndReset); // 當使用者修改休息時間，馬上重置
+
+    // 網頁一載入，就先請求通知權限
+    window.addEventListener('load', () => {
+        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+        // 網頁載入後，立刻執行一次，確保畫面是正確的初始狀態。
+        applySettingsAndReset();
+    });
+    </script>
+</body>
+</html>
